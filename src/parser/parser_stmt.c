@@ -3398,6 +3398,12 @@ ASTNode *parse_impl(ParserContext *ctx, Lexer *l)
                 char *na = patch_self_args(f->func.args, name2);
                 free(f->func.args);
                 f->func.args = na;
+
+                // Register function for lookup
+                register_func(ctx, mangled, f->func.arg_count, f->func.defaults, f->func.arg_types,
+                              f->func.ret_type_info, f->func.is_varargs, f->func.is_async,
+                              f->token);
+
                 if (!h)
                 {
                     h = f;
@@ -3424,6 +3430,12 @@ ASTNode *parse_impl(ParserContext *ctx, Lexer *l)
                     char *na = patch_self_args(f->func.args, name2);
                     free(f->func.args);
                     f->func.args = na;
+
+                    // Register function for lookup
+                    register_func(ctx, mangled, f->func.arg_count, f->func.defaults,
+                                  f->func.arg_types, f->func.ret_type_info, f->func.is_varargs,
+                                  f->func.is_async, f->token);
+
                     if (!h)
                     {
                         h = f;

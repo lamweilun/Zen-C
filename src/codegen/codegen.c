@@ -703,21 +703,57 @@ void codegen_expression(ParserContext *ctx, ASTNode *node, FILE *out)
                     char mixin_func_name[128];
                     sprintf(mixin_func_name, "%s__%s", base, method);
 
+                    char *resolved_method_suffix = NULL;
+
                     if (!find_func(ctx, mixin_func_name))
                     {
-                        // Method not found on primary struct, check mixins
-                        ASTNode *def = find_struct_def(ctx, base);
-                        if (def && def->type == NODE_STRUCT && def->strct.used_structs)
+                        // Try resolving as a trait method: Struct__Trait_Method
+                        StructRef *ref = ctx->parsed_impls_list;
+                        while (ref)
                         {
-                            for (int k = 0; k < def->strct.used_struct_count; k++)
+                            if (ref->node && ref->node->type == NODE_IMPL_TRAIT)
                             {
-                                char mixin_check[128];
-                                sprintf(mixin_check, "%s__%s", def->strct.used_structs[k], method);
-                                if (find_func(ctx, mixin_check))
+                                if (strcmp(ref->node->impl_trait.target_type, base) == 0)
                                 {
-                                    call_base = def->strct.used_structs[k];
-                                    need_cast = 1;
-                                    break;
+                                    char trait_mangled[256];
+                                    sprintf(trait_mangled, "%s__%s_%s", base,
+                                            ref->node->impl_trait.trait_name, method);
+                                    if (find_func(ctx, trait_mangled))
+                                    {
+                                        char *suffix =
+                                            xmalloc(strlen(ref->node->impl_trait.trait_name) +
+                                                    strlen(method) + 2);
+                                        sprintf(suffix, "%s_%s", ref->node->impl_trait.trait_name,
+                                                method);
+                                        resolved_method_suffix = suffix;
+                                        break;
+                                    }
+                                }
+                            }
+                            ref = ref->next;
+                        }
+
+                        if (resolved_method_suffix)
+                        {
+                            method = resolved_method_suffix;
+                        }
+                        else
+                        {
+                            // Method not found on primary struct, check mixins
+                            ASTNode *def = find_struct_def(ctx, base);
+                            if (def && def->type == NODE_STRUCT && def->strct.used_structs)
+                            {
+                                for (int k = 0; k < def->strct.used_struct_count; k++)
+                                {
+                                    char mixin_check[128];
+                                    sprintf(mixin_check, "%s__%s", def->strct.used_structs[k],
+                                            method);
+                                    if (find_func(ctx, mixin_check))
+                                    {
+                                        call_base = def->strct.used_structs[k];
+                                        need_cast = 1;
+                                        break;
+                                    }
                                 }
                             }
                         }

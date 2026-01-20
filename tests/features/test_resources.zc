@@ -1,0 +1,59 @@
+
+// Copy Trait
+@derive(Copy)
+struct Point { x: int; y: int; }
+
+// Clone Pattern
+trait Clone {
+    fn clone(self) -> Self;
+}
+
+struct Box { val: int; }
+
+impl Clone for Box {
+    fn clone(self) -> Box {
+        return Box{val: self.val};
+    }
+}
+
+// Re-initialization
+struct Resource { ptr: void*; }
+
+// Function Param Helper
+fn take_point(p: Point) {
+    if p.x != 10 {
+        // Error
+    }
+}
+
+test "Resource Semantics" {
+    "Testing Resource Semantics...";
+
+    var p1 = Point{x: 10, y: 20};
+    var p2 = p1; // Copied
+    
+    var b1 = Box{val: 99};
+    var b2 = b1.clone(); 
+    // var b3 = b1; // This would move if uncommented.
+    
+    if b2.val != 99 { 
+        !"Clone failed";
+        exit(1); 
+    }
+    
+    // Re-initialization
+    // struct Resource (Global)
+    
+    var r1 = Resource{ptr: NULL};
+    var r2 = r1; // Moved
+    
+    r1 = Resource{ptr: NULL}; // Re-init
+    var r3 = r1; // Valid again
+    
+    // Function Param Move (Simulated)
+    take_point(p1);
+    take_point(p1); // Still valid because Copy
+    
+    "Resource Semantics Passed.";
+}
+

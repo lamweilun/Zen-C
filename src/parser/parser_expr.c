@@ -3308,7 +3308,122 @@ ASTNode *parse_expr_prec(ParserContext *ctx, Lexer *l, Precedence min_prec)
         if (op.type == TOK_LPAREN)
         {
             ASTNode *call = ast_create(NODE_EXPR_CALL);
-            call->call.callee = lhs;
+
+            // Method Resolution Logic (Struct Method -> Trait Method)
+            ASTNode *self_arg = NULL;
+            FuncSig *resolved_sig = NULL;
+            char *resolved_name = NULL;
+
+            if (lhs->type == NODE_EXPR_MEMBER)
+            {
+                Type *lt = lhs->member.target->type_info;
+                int is_lhs_ptr = 0;
+                char *alloc_name = NULL;
+                char *struct_name =
+                    resolve_struct_name_from_type(ctx, lt, &is_lhs_ptr, &alloc_name);
+
+                if (struct_name)
+                {
+                    char mangled[256];
+                    sprintf(mangled, "%s__%s", struct_name, lhs->member.field);
+                    FuncSig *sig = find_func(ctx, mangled);
+
+                    if (!sig)
+                    {
+                        // Trait method lookup: Struct__Trait_Method
+                        StructRef *ref = ctx->parsed_impls_list;
+                        while (ref)
+                        {
+                            if (ref->node && ref->node->type == NODE_IMPL_TRAIT)
+                            {
+                                if (ref->node->impl_trait.target_type &&
+                                    strcmp(ref->node->impl_trait.target_type, struct_name) == 0)
+                                {
+                                    char trait_mangled[512];
+                                    snprintf(trait_mangled, 512, "%s__%s_%s", struct_name,
+                                             ref->node->impl_trait.trait_name, lhs->member.field);
+                                    if (find_func(ctx, trait_mangled))
+                                    {
+                                        sig = find_func(ctx, trait_mangled);
+                                        strcpy(mangled, trait_mangled);
+                                        break;
+                                    }
+                                }
+                            }
+                            ref = ref->next;
+                        }
+                    }
+
+                    if (sig)
+                    {
+                        resolved_name = xstrdup(mangled);
+                        resolved_sig = sig;
+
+                        // Create 'self' argument
+                        ASTNode *obj = lhs->member.target;
+
+                        // Handle Reference/Pointer adjustment based on signature
+                        if (sig->total_args > 0 && sig->arg_types[0] &&
+                            sig->arg_types[0]->kind == TYPE_POINTER)
+                        {
+                            if (!is_lhs_ptr)
+                            {
+                                // Function expects ptr, have value -> &obj
+                                int is_rvalue =
+                                    (obj->type == NODE_EXPR_CALL || obj->type == NODE_EXPR_BINARY ||
+                                     obj->type == NODE_EXPR_STRUCT_INIT ||
+                                     obj->type == NODE_EXPR_CAST || obj->type == NODE_MATCH);
+
+                                ASTNode *addr = ast_create(NODE_EXPR_UNARY);
+                                addr->unary.op = is_rvalue ? xstrdup("&_rval") : xstrdup("&");
+                                addr->unary.operand = obj;
+                                addr->type_info = type_new_ptr(lt);
+                                self_arg = addr;
+                            }
+                            else
+                            {
+                                self_arg = obj;
+                            }
+                        }
+                        else
+                        {
+                            // Function expects value
+                            if (is_lhs_ptr)
+                            {
+                                // Have ptr, need value -> *obj
+                                ASTNode *deref = ast_create(NODE_EXPR_UNARY);
+                                deref->unary.op = xstrdup("*");
+                                deref->unary.operand = obj;
+                                if (lt && lt->kind == TYPE_POINTER && lt->inner)
+                                {
+                                    deref->type_info = lt->inner;
+                                }
+                                self_arg = deref;
+                            }
+                            else
+                            {
+                                self_arg = obj;
+                            }
+                        }
+                    }
+                }
+                if (alloc_name)
+                {
+                    free(alloc_name);
+                }
+            }
+
+            if (resolved_name)
+            {
+                ASTNode *callee = ast_create(NODE_EXPR_VAR);
+                callee->var_ref.name = resolved_name;
+                call->call.callee = callee;
+            }
+            else
+            {
+                call->call.callee = lhs;
+            }
+
             ASTNode *head = NULL, *tail = NULL;
             char **arg_names = NULL;
             int arg_count = 0;
@@ -3390,12 +3505,44 @@ ASTNode *parse_expr_prec(ParserContext *ctx, Lexer *l, Precedence min_prec)
             {
                 zpanic_at(lexer_peek(l), "Expected )");
             }
+
+            // Prepend 'self' argument if resolved
+            if (self_arg)
+            {
+                self_arg->next = head;
+                head = self_arg;
+                arg_count++;
+
+                if (has_named)
+                {
+                    // Prepend NULL to arg_names for self
+                    char **new_names = xmalloc(sizeof(char *) * arg_count);
+                    new_names[0] = NULL;
+                    for (int i = 0; i < arg_count - 1; i++)
+                    {
+                        new_names[i + 1] = arg_names[i];
+                    }
+                    free(arg_names);
+                    arg_names = new_names;
+                }
+            }
+
             call->call.args = head;
             call->call.arg_names = has_named ? arg_names : NULL;
             call->call.arg_count = arg_count;
 
             call->resolved_type = xstrdup("unknown");
-            if (lhs->type_info && lhs->type_info->kind == TYPE_FUNCTION && lhs->type_info->inner)
+
+            if (resolved_sig)
+            {
+                call->type_info = resolved_sig->ret_type;
+                if (call->type_info)
+                {
+                    call->resolved_type = type_to_string(call->type_info);
+                }
+            }
+            else if (lhs->type_info && lhs->type_info->kind == TYPE_FUNCTION &&
+                     lhs->type_info->inner)
             {
                 call->type_info = lhs->type_info->inner;
             }
@@ -3695,6 +3842,33 @@ ASTNode *parse_expr_prec(ParserContext *ctx, Lexer *l, Precedence min_prec)
                     sprintf(mangled, "%s__%s", struct_name, node->member.field);
 
                     FuncSig *sig = find_func(ctx, mangled);
+
+                    if (!sig)
+                    {
+                        // Try resolving as a trait method: Struct__Trait__Method
+                        StructRef *ref = ctx->parsed_impls_list;
+                        while (ref)
+                        {
+                            if (ref->node && ref->node->type == NODE_IMPL_TRAIT)
+                            {
+                                const char *t_struct = ref->node->impl_trait.target_type;
+                                if (t_struct && strcmp(t_struct, struct_name) == 0)
+                                {
+                                    char trait_mangled[512];
+                                    snprintf(trait_mangled, 512, "%s__%s_%s", struct_name,
+                                             ref->node->impl_trait.trait_name, node->member.field);
+                                    if (find_func(ctx, trait_mangled))
+                                    {
+                                        strcpy(mangled, trait_mangled); // Update mangled name
+                                        sig = find_func(ctx, mangled);
+                                        break;
+                                    }
+                                }
+                            }
+                            ref = ref->next;
+                        }
+                    }
+
                     if (sig)
                     {
                         // It is a method! Create a Function Type Info to carry the return
@@ -4069,6 +4243,32 @@ ASTNode *parse_expr_prec(ParserContext *ctx, Lexer *l, Precedence min_prec)
                 sprintf(mangled, "%s__%s", struct_name, method);
 
                 FuncSig *sig = find_func(ctx, mangled);
+
+                if (!sig)
+                {
+                    // Try resolving as a trait method: Struct__Trait__Method
+                    StructRef *ref = ctx->parsed_impls_list;
+                    while (ref)
+                    {
+                        if (ref->node && ref->node->type == NODE_IMPL_TRAIT)
+                        {
+                            const char *t_struct = ref->node->impl_trait.target_type;
+                            if (t_struct && strcmp(t_struct, struct_name) == 0)
+                            {
+                                char trait_mangled[512];
+                                snprintf(trait_mangled, 512, "%s__%s_%s", struct_name,
+                                         ref->node->impl_trait.trait_name, method);
+                                if (find_func(ctx, trait_mangled))
+                                {
+                                    strcpy(mangled, trait_mangled); // Update mangled name
+                                    sig = find_func(ctx, mangled);
+                                    break;
+                                }
+                            }
+                        }
+                        ref = ref->next;
+                    }
+                }
 
                 if (sig)
                 {

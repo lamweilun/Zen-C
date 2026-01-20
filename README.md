@@ -457,7 +457,7 @@ fn peek(r: Resource*) { ... }   // 'r' is borrowed (reference)
 If you *do* want two copies of a resource, make it explicit:
 
 ```zc
-var b = a.clone(); // Deep copy: New allocation, safe.
+var b = a.clone(); // Calls the 'clone' method from the Clone trait
 ```
 
 **Opt-in Copy (Value Types)**:
@@ -592,6 +592,27 @@ struct Point { x: int; y: int; }
 fn main() {
     var p1 = Point{x: 1, y: 2};
     var p2 = p1; // Copied! p1 remains valid.
+}
+```
+
+**Clone**
+
+Implement `Clone` to allow explicit duplication of resource-owning types.
+
+```zc
+import "std/mem.zc"
+
+struct MyBox { val: int; }
+
+impl Clone for MyBox {
+    fn clone(self) -> MyBox {
+        return MyBox{val: self.val};
+    }
+}
+
+fn main() {
+    var b1 = MyBox{val: 42};
+    var b2 = b1.clone(); // Explicit copy
 }
 ```
 

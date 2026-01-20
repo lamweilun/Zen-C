@@ -424,6 +424,28 @@ void emit_struct_defs(ParserContext *ctx, ASTNode *node, FILE *out)
     }
 }
 
+// Helper to substitute 'Self' with replacement string
+static char *substitute_proto_self(const char *type_str, const char *replacement)
+{
+    if (!type_str)
+    {
+        return NULL;
+    }
+    if (strcmp(type_str, "Self") == 0)
+    {
+        return xstrdup(replacement);
+    }
+    // Handle pointers (Self* -> replacement*)
+    if (strncmp(type_str, "Self", 4) == 0)
+    {
+        char *rest = (char *)type_str + 4;
+        char *buf = xmalloc(strlen(replacement) + strlen(rest) + 1);
+        sprintf(buf, "%s%s", replacement, rest);
+        return buf;
+    }
+    return xstrdup(type_str);
+}
+
 // Emit trait definitions.
 void emit_trait_defs(ASTNode *node, FILE *out)
 {
@@ -440,8 +462,10 @@ void emit_trait_defs(ASTNode *node, FILE *out)
             ASTNode *m = node->trait.methods;
             while (m)
             {
-                fprintf(out, "    %s (*%s)(", m->func.ret_type,
-                        parse_original_method_name(m->func.name));
+                char *ret_safe = substitute_proto_self(m->func.ret_type, "void*");
+                fprintf(out, "    %s (*%s)(", ret_safe, parse_original_method_name(m->func.name));
+                free(ret_safe);
+
                 int has_self = (m->func.args && strstr(m->func.args, "self"));
                 if (!has_self)
                 {
@@ -454,7 +478,32 @@ void emit_trait_defs(ASTNode *node, FILE *out)
                     {
                         fprintf(out, ", ");
                     }
-                    fprintf(out, "%s", m->func.args);
+                    char *args_safe = xstrdup(m->func.args);
+                    // TODO: better replace, but for now this works.
+                    char *p = strstr(args_safe, "Self");
+                    while (p)
+                    {
+                        // Check word boundary
+                        if ((p == args_safe || !isalnum(p[-1])) && !isalnum(p[4]))
+                        {
+                            int off = p - args_safe;
+                            char *new_s = xmalloc(strlen(args_safe) + 10);
+                            strncpy(new_s, args_safe, off);
+                            new_s[off] = 0;
+                            strcat(new_s, "void*");
+                            strcat(new_s, p + 4);
+                            free(args_safe);
+                            args_safe = new_s;
+                            p = strstr(args_safe + off + 5, "Self");
+                        }
+                        else
+                        {
+                            p = strstr(p + 1, "Self");
+                        }
+                    }
+
+                    fprintf(out, "%s", args_safe);
+                    free(args_safe);
                 }
                 fprintf(out, ");\n");
                 m = m->next;
@@ -467,7 +516,9 @@ void emit_trait_defs(ASTNode *node, FILE *out)
             while (m)
             {
                 const char *orig = parse_original_method_name(m->func.name);
-                fprintf(out, "%s %s__%s(%s* self", m->func.ret_type, node->trait.name, orig,
+                char *ret_sub = substitute_proto_self(m->func.ret_type, node->trait.name);
+
+                fprintf(out, "%s %s__%s(%s* self", ret_sub, node->trait.name, orig,
                         node->trait.name);
 
                 int has_self = (m->func.args && strstr(m->func.args, "self"));
@@ -478,17 +529,45 @@ void emit_trait_defs(ASTNode *node, FILE *out)
                         char *comma = strchr(m->func.args, ',');
                         if (comma)
                         {
-                            fprintf(out, ", %s", comma + 1);
+                            // Substitute Self -> TraitName in wrapper args
+                            char *args_sub = xstrdup(comma + 1);
+                            char *p = strstr(args_sub, "Self");
+                            while (p)
+                            {
+                                int off = p - args_sub;
+                                char *new_s =
+                                    xmalloc(strlen(args_sub) + strlen(node->trait.name) + 5);
+                                strncpy(new_s, args_sub, off);
+                                new_s[off] = 0;
+                                strcat(new_s, node->trait.name);
+                                strcat(new_s, p + 4);
+                                free(args_sub);
+                                args_sub = new_s;
+                                p = strstr(args_sub + off + strlen(node->trait.name), "Self");
+                            }
+
+                            fprintf(out, ", %s", args_sub);
+                            free(args_sub);
                         }
                     }
                     else
                     {
-                        fprintf(out, ", %s", m->func.args);
+                        fprintf(out, ", %s", m->func.args); // TODO: recursive subst
                     }
                 }
                 fprintf(out, ") {\n");
 
-                fprintf(out, "    return self->vtable->%s(self->self", orig);
+                int ret_is_self = (strcmp(m->func.ret_type, "Self") == 0);
+
+                if (ret_is_self)
+                {
+                    // Special handling: return (Trait){.self = call(), .vtable = self->vtable}
+                    fprintf(out, "    void* ret = self->vtable->%s(self->self", orig);
+                }
+                else
+                {
+                    fprintf(out, "    return self->vtable->%s(self->self", orig);
+                }
 
                 if (m->func.args)
                 {
@@ -510,7 +589,16 @@ void emit_trait_defs(ASTNode *node, FILE *out)
                     }
                     free(call_args);
                 }
-                fprintf(out, ");\n}\n");
+                fprintf(out, ");\n");
+
+                if (ret_is_self)
+                {
+                    fprintf(out, "    return (%s){.self = ret, .vtable = self->vtable};\n",
+                            node->trait.name);
+                }
+
+                fprintf(out, "}\n\n");
+                free(ret_sub);
 
                 m = m->next;
             }
