@@ -1248,7 +1248,7 @@ ASTNode *parse_var_decl(ParserContext *ctx, Lexer *l)
                 t = s->type_info;
             }
         }
-        if (!is_type_copy(t))
+        if (!is_type_copy(ctx, t))
         {
             Symbol *s = find_symbol_entry(ctx, init->var_ref.name);
             if (s)

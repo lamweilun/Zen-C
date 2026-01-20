@@ -189,6 +189,8 @@ struct Flags {
 }
 ```
 
+> **Note**: Structs use [Move Semantics](#move-semantics--copy-safety) by default. Fields can be accessed via `.` even on pointers (Auto-Dereference).
+
 #### Enums
 Tagged unions (Sum types) capable of holding data.
 ```zc
@@ -347,6 +349,9 @@ These operators are built-in language features and cannot be overloaded directly
 | `?.` | Safe Navigation | `ptr?.field` accesses field only if `ptr` is not NULL |
 | `?` | Try Operator | `res?` returns error if present (Result/Option types) |
 
+**Auto-Dereference**:
+Pointer field access (`ptr.field`) and method calls (`ptr.method()`) automatically dereference the pointer, equivalent to `(*ptr).field`.
+
 ### 7. Printing and String Interpolation
 
 Zen C provides versatile options for printing to the console, including keywords and concise shorthands.
@@ -407,6 +412,35 @@ defer fclose(f);
 Automatically free the variable when scope exits.
 ```zc
 autofree var types = malloc(1024);
+```
+
+#### Move Semantics & Copy Safety
+Zen C prevents double-free errors by enforcing **Move Semantics** for non-trivial types (structs) by default.
+
+- **Move by Default**: Assigning a struct variable transfers ownership. The original variable becomes invalid.
+- **Copy Trait**: Implement the `Copy` trait to opt-out of move semantics for simple types (e.g. `Point`).
+
+```zc
+struct Mover { val: int; }
+
+fn main() {
+    var a = Mover { val: 1 };
+    var b = a; // 'a' moved to 'b'
+    // print(a.val); // Error: Use of moved value 'a'
+}
+```
+
+**Opt-in Copy**:
+
+```zc
+struct Point { x: int; y: int; }
+impl Copy for Point {}
+
+fn main() {
+    var p1 = Point { x: 1, y: 2 };
+    var p2 = p1; // p1 copied to p2
+    // p1 is still valid
+}
 ```
 
 #### RAII / Drop Trait
@@ -512,6 +546,8 @@ impl Drop for Resource {
     }
 }
 ```
+
+> **Note:** If a variable is moved, `drop` is NOT called on the original variable. It adheres to [Move Semantics](#move-semantics--copy-safety).
 
 #### Composition
 Use `use` to embed other structs. You can either mix them in (flatten fields) or name them (nest fields).

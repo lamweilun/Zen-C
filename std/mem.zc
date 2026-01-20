@@ -15,6 +15,12 @@ trait Drop {
     fn drop(self);
 }
 
+trait Copy {}
+
+trait Clone {
+    // fn clone(self) -> Self;
+}
+
 struct Box<T> {
     ptr: T*;
 }

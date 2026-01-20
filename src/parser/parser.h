@@ -430,7 +430,7 @@ ASTNode *parse_impl_trait(ParserContext *ctx, Lexer *l);
 ASTNode *parse_test(ParserContext *ctx, Lexer *l);
 
 // Move semantics helpers
-int is_type_copy(Type *t);
+int is_type_copy(ParserContext *ctx, Type *t);
 void check_move_usage(ParserContext *ctx, ASTNode *node, Token t);
 ASTNode *parse_include(ParserContext *ctx, Lexer *l);
 ASTNode *parse_import(ParserContext *ctx, Lexer *l);

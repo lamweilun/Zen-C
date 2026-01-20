@@ -9,7 +9,7 @@
 
 Type *get_field_type(ParserContext *ctx, Type *struct_type, const char *field_name);
 
-int is_type_copy(Type *t)
+int is_type_copy(ParserContext *ctx, Type *t)
 {
     if (!t)
     {
@@ -38,7 +38,11 @@ int is_type_copy(Type *t)
         return 1;
 
     case TYPE_STRUCT:
-        // Structs are MOVE by default
+        // Structs are MOVE by default unless they implement Copy
+        if (check_impl(ctx, "Copy", t->name))
+        {
+            return 1;
+        }
         return 0;
 
     case TYPE_ARRAY:
@@ -1829,7 +1833,7 @@ ASTNode *parse_primary(ParserContext *ctx, Lexer *l)
                             }
                         }
 
-                        if (!is_type_copy(t))
+                        if (!is_type_copy(ctx, t))
                         {
                             Symbol *s = find_symbol_entry(ctx, arg->var_ref.name);
                             if (s)
@@ -1960,7 +1964,7 @@ ASTNode *parse_primary(ParserContext *ctx, Lexer *l)
                             }
                         }
 
-                        if (!is_type_copy(t))
+                        if (!is_type_copy(ctx, t))
                         {
                             Symbol *s = find_symbol_entry(ctx, arg->var_ref.name);
                             if (s)
@@ -2246,7 +2250,7 @@ ASTNode *parse_primary(ParserContext *ctx, Lexer *l)
                             }
                         }
 
-                        if (!is_type_copy(t))
+                        if (!is_type_copy(ctx, t))
                         {
                             Symbol *s = find_symbol_entry(ctx, arg->var_ref.name);
                             if (s)
@@ -3347,7 +3351,7 @@ ASTNode *parse_expr_prec(ParserContext *ctx, Lexer *l, Precedence min_prec)
                             }
                         }
 
-                        if (!is_type_copy(t))
+                        if (!is_type_copy(ctx, t))
                         {
                             Symbol *s = find_symbol_entry(ctx, arg->var_ref.name);
                             if (s)
@@ -3753,7 +3757,7 @@ ASTNode *parse_expr_prec(ParserContext *ctx, Lexer *l, Precedence min_prec)
                     }
                 }
 
-                if (!is_type_copy(t))
+                if (!is_type_copy(ctx, t))
                 {
                     Symbol *s = find_symbol_entry(ctx, rhs->var_ref.name);
                     if (s)
