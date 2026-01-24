@@ -121,3 +121,24 @@ fn print_default_shape(s: Shape = &g_def_circle) {
 test "implicit_trait_cast_default" {
     print_default_shape();
 }
+
+trait UnderscoreTest {
+    fn method_with_underscores_123(self) -> int;
+}
+
+struct UnderscoreStruct {
+    val: int;
+}
+
+impl UnderscoreTest for UnderscoreStruct {
+    fn method_with_underscores_123(self) -> int {
+        return self.val;
+    }
+}
+
+test "trait_underscores" {
+    var u = UnderscoreStruct { val: 100 };
+    var t: UnderscoreTest = &u;
+    
+    assert(t.method_with_underscores_123() == 100, "Method with underscores call failed");
+}

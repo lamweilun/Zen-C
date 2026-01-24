@@ -953,7 +953,20 @@ void emit_impl_vtables(ParserContext *ctx, FILE *out)
             ASTNode *m = node->impl_trait.methods;
             while (m)
             {
-                const char *orig = parse_original_method_name(m->func.name);
+                // Calculate expected prefix: Struct__Trait_
+                char prefix[256];
+                sprintf(prefix, "%s__%s_", strct, trait);
+                const char *orig = m->func.name;
+                if (strncmp(orig, prefix, strlen(prefix)) == 0)
+                {
+                    orig += strlen(prefix);
+                }
+                else
+                {
+                    // Fallback if mangling schema differs (shouldn't happen)
+                    orig = parse_original_method_name(m->func.name);
+                }
+
                 fprintf(out, ".%s = (__typeof__(((%s_VTable*)0)->%s))%s__%s_%s", orig, trait, orig,
                         strct, trait, orig);
                 if (m->next)

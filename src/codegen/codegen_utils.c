@@ -519,8 +519,22 @@ char *extract_call_args(const char *args)
 // Parse original method name from mangled name.
 const char *parse_original_method_name(const char *mangled)
 {
-    const char *last = strrchr(mangled, '_');
-    return last ? last + 1 : mangled;
+    const char *sep = strstr(mangled, "__");
+    if (!sep)
+    {
+        return mangled;
+    }
+
+    // Let's iterate to find the last `__`.
+    const char *last_double = NULL;
+    const char *p = mangled;
+    while ((p = strstr(p, "__")))
+    {
+        last_double = p;
+        p += 2;
+    }
+
+    return last_double ? last_double + 2 : mangled;
 }
 
 // Replace string type in arguments.
