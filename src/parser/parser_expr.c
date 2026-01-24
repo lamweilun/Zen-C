@@ -3623,44 +3623,8 @@ ASTNode *parse_expr_prec(ParserContext *ctx, Lexer *l, Precedence min_prec)
     }
     else if (is_token(t, "sizeof"))
     {
-        lexer_next(l);
-        if (lexer_peek(l).type == TOK_LPAREN)
-        {
-            const char *start = l->src + l->pos;
-            int depth = 0;
-            while (1)
-            {
-                Token tk = lexer_peek(l);
-                if (tk.type == TOK_EOF)
-                {
-                    zpanic_at(tk, "Unterminated sizeof");
-                }
-                if (tk.type == TOK_LPAREN)
-                {
-                    depth++;
-                }
-                if (tk.type == TOK_RPAREN)
-                {
-                    depth--;
-                    if (depth == 0)
-                    {
-                        lexer_next(l);
-                        break;
-                    }
-                }
-                lexer_next(l);
-            }
-            int len = (l->src + l->pos) - start;
-            char *content = xmalloc(len + 8);
-            sprintf(content, "sizeof%.*s", len, start);
-            lhs = ast_create(NODE_RAW_STMT);
-            lhs->raw_stmt.content = content;
-            lhs->type_info = type_new(TYPE_INT);
-        }
-        else
-        {
-            zpanic_at(lexer_peek(l), "sizeof must be followed by (");
-        }
+        lexer_next(l); // consume sizeof
+        lhs = parse_sizeof_expr(ctx, l);
     }
     else
     {

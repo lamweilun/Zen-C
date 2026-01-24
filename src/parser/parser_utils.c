@@ -1713,6 +1713,48 @@ ASTNode *copy_ast_replacing(ASTNode *n, const char *p, const char *c, const char
             replace_type_str(n->impl_trait.target_type, p, c, os, ns);
         new_node->impl_trait.methods = copy_ast_replacing(n->impl_trait.methods, p, c, os, ns);
         break;
+    case NODE_EXPR_SIZEOF:
+        if (n->size_of.target_type)
+        {
+            char *replaced = replace_type_str(n->size_of.target_type, p, c, os, ns);
+            if (replaced && strchr(replaced, '<'))
+            {
+                char *src = replaced;
+                char *mangled = xmalloc(strlen(src) * 2 + 1);
+                char *dst = mangled;
+                while (*src)
+                {
+                    if (*src == '<' || *src == ',')
+                    {
+                        *dst++ = '_';
+                        while (*(src + 1) == ' ')
+                        {
+                            src++; // skip space
+                        }
+                    }
+                    else if (*src == '>')
+                    {
+                        // skip
+                    }
+                    else if (*src == '*')
+                    {
+                        strcpy(dst, "Ptr");
+                        dst += 3;
+                    }
+                    else if (!isspace(*src))
+                    {
+                        *dst++ = *src;
+                    }
+                    src++;
+                }
+                *dst = 0;
+                free(replaced);
+                replaced = mangled;
+            }
+            new_node->size_of.target_type = replaced;
+        }
+        new_node->size_of.expr = copy_ast_replacing(n->size_of.expr, p, c, os, ns);
+        break;
     default:
         break;
     }
@@ -2408,8 +2450,13 @@ void instantiate_generic(ParserContext *ctx, const char *tpl, const char *arg,
             i->type_info->traits = t->struct_node->type_info->traits;
             i->type_info->is_restrict = t->struct_node->type_info->is_restrict;
         }
-
-        // Use first generic param for substitution (single-param backward compat)
+        i->strct.is_packed = t->struct_node->strct.is_packed;
+        i->strct.is_union = t->struct_node->strct.is_union;
+        i->strct.align = t->struct_node->strct.align;
+        if (t->struct_node->strct.parent)
+        {
+            i->strct.parent = xstrdup(t->struct_node->strct.parent);
+        }
         const char *gp = (t->struct_node->strct.generic_param_count > 0)
                              ? t->struct_node->strct.generic_params[0]
                              : "T";
@@ -2534,6 +2581,15 @@ void instantiate_generic_multi(ParserContext *ctx, const char *tpl, char **args,
         ASTNode *i = ast_create(NODE_STRUCT);
         i->strct.name = xstrdup(m);
         i->strct.is_template = 0;
+
+        // Copy struct attributes
+        i->strct.is_packed = t->struct_node->strct.is_packed;
+        i->strct.is_union = t->struct_node->strct.is_union;
+        i->strct.align = t->struct_node->strct.align;
+        if (t->struct_node->strct.parent)
+        {
+            i->strct.parent = xstrdup(t->struct_node->strct.parent);
+        }
 
         // Copy fields with sequential substitutions for each param
         ASTNode *fields = t->struct_node->strct.fields;

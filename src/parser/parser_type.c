@@ -483,7 +483,8 @@ Type *parse_type_base(ParserContext *ctx, Lexer *l)
         ty->is_explicit_struct = explicit_struct;
 
         // Handle Generics <T> or <K, V>
-        if (lexer_peek(l).type == TOK_LANGLE)
+        if (lexer_peek(l).type == TOK_LANGLE ||
+            (lexer_peek(l).type == TOK_OP && strncmp(lexer_peek(l).start, "<", 1) == 0))
         {
             lexer_next(l); // eat <
             Type *first_arg = parse_type_formal(ctx, l);
