@@ -11,7 +11,7 @@
 
 #ifdef __COSMOPOLITAN__
 #include <cosmo.h>
-#define z_is_windows() IsWindows()
+#define z_is_windows() IsWindows() ///< Check if running on Windows.
 #else
 #ifdef _WIN32
 #define z_is_windows() 1
@@ -25,31 +25,31 @@
 #ifndef PATH_MAX
 #define PATH_MAX 260
 #endif
-#define realpath(N, R) _fullpath((R), (N), PATH_MAX)
+#define realpath(N, R) _fullpath((R), (N), PATH_MAX) ///< Get absolute path.
 #endif
 
 // **ZEN VERSION**
 #ifndef ZEN_VERSION
-#define ZEN_VERSION "0.1.0"
+#define ZEN_VERSION "0.1.0" ///< Zen-C version.
 #endif
 
 // ** ANSI COLORS **
-#define COLOR_RESET "\033[0m"
-#define COLOR_RED "\033[1;31m"
-#define COLOR_GREEN "\033[1;32m"
-#define COLOR_YELLOW "\033[1;33m"
-#define COLOR_BLUE "\033[1;34m"
-#define COLOR_CYAN "\033[1;36m"
-#define COLOR_BOLD "\033[1m"
+#define COLOR_RESET "\033[0m" ///< Reset color.
+#define COLOR_RED "\033[1;31m" ///< Red color.
+#define COLOR_GREEN "\033[1;32m" ///< Green color.
+#define COLOR_YELLOW "\033[1;33m" ///< Yellow color.
+#define COLOR_BLUE "\033[1;34m" ///< Blue color.
+#define COLOR_CYAN "\033[1;36m" ///< Cyan color.
+#define COLOR_BOLD "\033[1m" ///< Bold text.
 
 // ** MEMORY OVERRIDES (Arena) **
-#define free(ptr) ((void)0)
-#define malloc(sz) xmalloc(sz)
-#define realloc(p, s) xrealloc(p, s)
-#define calloc(n, s) xcalloc(n, s)
+#define free(ptr) ((void)0) ///< Free memory.
+#define malloc(sz) xmalloc(sz) ///< Allocate memory.
+#define realloc(p, s) xrealloc(p, s) ///< Reallocate memory.
+#define calloc(n, s) xcalloc(n, s) ///< Allocate and zero memory.
 
 // ** GLOBAL STATE **
-extern char *g_current_filename;
+extern char *g_current_filename; ///< Current filename.
 
 /**
  * @brief Token types for the Lexer.
@@ -134,24 +134,69 @@ typedef struct
     int col;            ///< Current column number.
 } Lexer;
 
+/**
+ * @brief Initialize the lexer.
+ */
 void lexer_init(Lexer *l, const char *src);
+
+/**
+ * @brief Get the next token.
+ */
 Token lexer_next(Lexer *l);
+
+/**
+ * @brief Get the next token without advancing.
+ */
 Token lexer_peek(Lexer *l);
+
+/**
+ * @brief Get the next token without advancing (2 look ahead).
+ */
 Token lexer_peek2(Lexer *l);
 
+/**
+ * @brief Register a trait.
+ */
 void register_trait(const char *name);
+
+/**
+ * @brief Check if a name is a trait.
+ */
 int is_trait(const char *name);
 
-// Arena and memory.
+/**
+ * @brief Allocate memory.
+ */
 void *xmalloc(size_t size);
+
+/**
+ * @brief Reallocate memory.
+ */
 void *xrealloc(void *ptr, size_t new_size);
+
+/**
+ * @brief Allocate and zero memory.
+ */
 void *xcalloc(size_t n, size_t size);
+
+/**
+ * @brief Duplicate a string.
+ */
 char *xstrdup(const char *s);
 
-// Error reporting.
+/**
+ * @brief Error reporting.
+ */
 void zpanic(const char *fmt, ...);
+
+/**
+ * @brief Error reporting with token location.
+ */
 void zpanic_at(Token t, const char *fmt, ...);
 
+/**
+ * @brief Load a file.
+ */
 char *load_file(const char *filename);
 
 // ** Buffer Size Constants **
@@ -166,36 +211,131 @@ extern int g_warning_count;
 
 struct ParserContext;
 
+/**
+ * @brief Scan build directives.
+ */
 void scan_build_directives(struct ParserContext *ctx, const char *src);
+
+/**
+ * @brief Calculate Levenshtein distance.
+ */
 int levenshtein(const char *s1, const char *s2);
+
+/**
+ * @brief Error reporting with suggestion.
+ */
 void zpanic_with_suggestion(Token t, const char *msg, const char *suggestion);
 
 // Specific error types.
+
+/**
+ * @brief Error reporting for undefined function.
+ */
 void error_undefined_function(Token t, const char *func_name, const char *suggestion);
+
+/**
+ * @brief Error reporting for wrong argument count.
+ */
 void error_wrong_arg_count(Token t, const char *func_name, int expected, int got);
+
+/**
+ * @brief Error reporting for undefined field.
+ */
 void error_undefined_field(Token t, const char *struct_name, const char *field_name,
                            const char *suggestion);
+
+/**
+ * @brief Error reporting for type expected.
+ */
 void error_type_expected(Token t, const char *expected, const char *got);
+
+/**
+ * @brief Error reporting for cannot index.
+ */
 void error_cannot_index(Token t, const char *type_name);
 
 // Warning system.
+
+/**
+ * @brief Warning reporting.
+ */
 void zwarn(const char *fmt, ...);
+
+/**
+ * @brief Warning reporting with token location.
+ */
 void zwarn_at(Token t, const char *fmt, ...);
 
 // Specific warnings.
+
+/**
+ * @brief Warning reporting for unused variable.
+ */
 void warn_unused_variable(Token t, const char *var_name);
+
+/**
+ * @brief Warning reporting for unused parameter.
+ */
 void warn_unused_parameter(Token t, const char *param_name, const char *func_name);
+
+/**
+ * @brief Warning reporting for shadowing.
+ */
 void warn_shadowing(Token t, const char *var_name);
+
+/**
+ * @brief Warning reporting for unreachable code.
+ */
 void warn_unreachable_code(Token t);
+
+/**
+ * @brief Warning reporting for implicit conversion.
+ */
 void warn_implicit_conversion(Token t, const char *from_type, const char *to_type);
+
+/**
+ * @brief Warning reporting for narrowing conversion.
+ */
 void warn_narrowing_conversion(Token t, const char *from_type, const char *to_type);
+
+/**
+ * @brief Warning reporting for missing return.
+ */
 void warn_missing_return(Token t, const char *func_name);
+
+/**
+ * @brief Warning reporting for comparison always true.
+ */
 void warn_comparison_always_true(Token t, const char *reason);
+
+/**
+ * @brief Warning reporting for comparison always false.
+ */
 void warn_comparison_always_false(Token t, const char *reason);
+
+/**
+ * @brief Warning reporting for division by zero.
+ */
 void warn_division_by_zero(Token t);
+
+/**
+ * @brief Warning reporting for integer overflow.
+ */
 void warn_integer_overflow(Token t, const char *type_name, long long value);
+
+/**
+ * @brief Warning reporting for array bounds.
+ */
 void warn_array_bounds(Token t, int index, int size);
+
+/**
+ * @brief Warning reporting for format string.
+ */
 void warn_format_string(Token t, int arg_num, const char *expected, const char *got);
+
+/**
+ * @brief Warning reporting for null pointer.
+ */
 void warn_null_pointer(Token t, const char *expr);
 
 /**
@@ -231,6 +371,10 @@ extern char g_link_flags[];
 extern char g_cflags[];
 
 struct ParserContext;
+
+/**
+ * @brief Scan build directives.
+ */
 void scan_build_directives(struct ParserContext *ctx, const char *src);
 
 #endif
