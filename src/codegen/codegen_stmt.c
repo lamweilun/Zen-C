@@ -884,7 +884,7 @@ void codegen_node_single(ParserContext *ctx, ASTNode *node, FILE *out)
             }
             else
             {
-                fprintf(out, "    __auto_type %s = _tmp_%d.%s;\n", node->destruct.names[0], id,
+                fprintf(out, "    ZC_AUTO %s = _tmp_%d.%s;\n", node->destruct.names[0], id,
                         check);
             }
         }
@@ -903,7 +903,7 @@ void codegen_node_single(ParserContext *ctx, ASTNode *node, FILE *out)
                     }
                     else
                     {
-                        fprintf(out, "    __auto_type %s = _tmp_%d.%s;\n", node->destruct.names[i],
+                        fprintf(out, "    ZC_AUTO %s = _tmp_%d.%s;\n", node->destruct.names[i],
                                 id, field);
                     }
                 }
@@ -916,7 +916,7 @@ void codegen_node_single(ParserContext *ctx, ASTNode *node, FILE *out)
                     }
                     else
                     {
-                        fprintf(out, "    __auto_type %s = _tmp_%d.v%d;\n", node->destruct.names[i],
+                        fprintf(out, "    ZC_AUTO %s = _tmp_%d.v%d;\n", node->destruct.names[i],
                                 id, i);
                     }
                 }
@@ -1528,7 +1528,7 @@ void codegen_node_single(ParserContext *ctx, ASTNode *node, FILE *out)
                     }
                     else
                     {
-                        fprintf(out, "__auto_type");
+                        fprintf(out, "ZC_AUTO");
                     }
                     fprintf(out, " _z_ret_mv = ");
                     codegen_expression(ctx, node->ret.value, out);

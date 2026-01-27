@@ -17,7 +17,7 @@ static int is_header_line(const char *line)
 
 void run_repl(const char *self_path)
 {
-    printf("\033[1;36mZen C REPL (v0.1)\033[0m\n");
+    printf("\033[1;36mZen C REPL (%s)\033[0m\n", ZEN_VERSION);
     printf("Type 'exit' or 'quit' to leave.\n");
     printf("Type :help for commands.\n");
 
