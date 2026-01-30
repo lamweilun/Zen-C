@@ -197,6 +197,8 @@ let y: const int = 10;  // Solo lectura (Calificado por tipo)
 // y = 20;              // Error: no se puede asignar a una constante
 ```
 
+> **Inferencia de tipos**: Zen C infiere automáticamente los tipos para variables inicializadas. Se compila a `auto` de C23 en compiladores compatibles, o a la extensión `__auto_type` de GCC en otros casos.
+
 ### 2. Tipos Primitivos
 
 | Tipo | Equivalente en C | Descripción |
@@ -211,6 +213,8 @@ let y: const int = 10;  // Solo lectura (Calificado por tipo)
 | `char` | `char` | Carácter único |
 | `string` | `char*` | Cadena de C (terminada en null) |
 | `U0`, `u0`, `void` | `void` | Tipo vacío |
+| `iN` (ej. `i256`) | `_BitInt(N)` | Entero con signo de ancho arbitrario (C23) |
+| `uN` (ej. `u42`) | `unsigned _BitInt(N)` | Entero sin signo de ancho arbitrario (C23) |
 
 ### 3. Tipos Agregados
 
@@ -1336,6 +1340,13 @@ let tid = local_id();
 
 
 > **Nota:** La flag `--cuda` establece `nvcc` como el compilador e implica el modo `--cpp`. Requiere el NVIDIA CUDA Toolkit.
+
+### Soporte C23
+
+Zen C soporta características modernas de C23 cuando se utiliza un compilador backend compatible (GCC 14+, Clang 14+).
+
+- **`auto`**: Zen C mapea automáticamente la inferencia de tipos a `auto` estándar de C23 si `__STDC_VERSION__ >= 202300L`.
+- **`_BitInt(N)`**: Use tipos `iN` y `uN` (ej. `i256`, `u12`, `i24`) para acceder a enteros de ancho arbitrario de C23.
 
 ### Interop con Objective-C
 

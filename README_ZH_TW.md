@@ -197,6 +197,8 @@ let y: const int = 10;  // 只讀 (類型修飾)
 // y = 20;              // 錯誤：無法賦值給 const 變量
 ```
 
+> **型別推導**：Zen C 自動推導初始化變數的型別。在支援的編譯器上編譯為 C23 的 `auto`，否則使用 GCC 的 `__auto_type` 擴充功能。
+
 ### 2. 原始類型
 
 | 類型 | C 等效類型 | 描述 |
@@ -211,6 +213,8 @@ let y: const int = 10;  // 只讀 (類型修飾)
 | `char` | `char` | 單個字符 |
 | `string` | `char*` | C-string (以 null 結尾) |
 | `U0`, `u0`, `void` | `void` | 空類型 |
+| `iN` (例 `i256`) | `_BitInt(N)` | 任意位元寬度有號整數 (C23) |
+| `uN` (例 `u42`) | `unsigned _BitInt(N)` | 任意位元寬度無號整數 (C23) |
 
 ### 3. 複合類型
 
@@ -1336,6 +1340,13 @@ let tid = local_id();
 
 
 > **注意：** `--cuda` 標誌設置 `nvcc` 為編譯器並隱含 `--cpp` 模式。需要安裝 NVIDIA CUDA Toolkit。
+
+### C23 支援
+
+當使用相容的後端編譯器（GCC 14+, Clang 14+）時，Zen C 支援現代 C23 特性。
+
+-   **`auto`**: 如果 `__STDC_VERSION__ >= 202300L`，Zen C 會自動將型別推導映射到標準 C23 `auto`。
+-   **`_BitInt(N)`**: 使用 `iN` 和 `uN` 型別（例如 `i256`, `u12`, `i24`）存取 C23 任意位元寬度整數。
 
 ### Objective-C 互操作
 

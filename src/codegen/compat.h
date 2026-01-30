@@ -14,7 +14,11 @@
 #define ZC_EXTERN_C_END }
 #else
 /* C mode */
-#define ZC_AUTO __auto_type           ///< Auto type inference.
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202300L
+#define ZC_AUTO auto ///< C23 standard auto.
+#else
+#define ZC_AUTO __auto_type ///< GCC/Clang extension.
+#endif
 #define ZC_CAST(T, x) ((T)(x))        ///< Explicit cast.
 #define ZC_REINTERPRET(T, x) ((T)(x)) ///< Reinterpret cast.
 #define ZC_EXTERN_C                   ///< Extern "C" (no-op in C).

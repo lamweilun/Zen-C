@@ -100,6 +100,7 @@ int is_integer_type(Type *t)
             t->kind == TYPE_I64 || t->kind == TYPE_U64 || t->kind == TYPE_USIZE ||
             t->kind == TYPE_ISIZE || t->kind == TYPE_BYTE || t->kind == TYPE_RUNE ||
             t->kind == TYPE_UINT || t->kind == TYPE_I128 || t->kind == TYPE_U128 ||
+            t->kind == TYPE_BITINT || t->kind == TYPE_UBITINT ||
             (t->kind == TYPE_STRUCT && t->name &&
              (0 == strcmp(t->name, "int8_t") || 0 == strcmp(t->name, "uint8_t") ||
               0 == strcmp(t->name, "int16_t") || 0 == strcmp(t->name, "uint16_t") ||
@@ -262,6 +263,18 @@ static char *type_to_string_impl(Type *t)
         return xstrdup("int");
     case TYPE_FLOAT:
         return xstrdup("float");
+    case TYPE_BITINT:
+    {
+        char *res = xmalloc(32);
+        sprintf(res, "i%d", t->array_size);
+        return res;
+    }
+    case TYPE_UBITINT:
+    {
+        char *res = xmalloc(32);
+        sprintf(res, "u%d", t->array_size);
+        return res;
+    }
 
     case TYPE_POINTER:
     {
@@ -452,6 +465,18 @@ static char *type_to_c_string_impl(Type *t)
         return xstrdup("int");
     case TYPE_FLOAT:
         return xstrdup("float");
+    case TYPE_BITINT:
+    {
+        char *res = xmalloc(32);
+        sprintf(res, "_BitInt(%d)", t->array_size);
+        return res;
+    }
+    case TYPE_UBITINT:
+    {
+        char *res = xmalloc(40);
+        sprintf(res, "unsigned _BitInt(%d)", t->array_size);
+        return res;
+    }
 
     case TYPE_POINTER:
     {

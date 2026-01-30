@@ -85,7 +85,11 @@ void emit_preamble(ParserContext *ctx, FILE *out)
         else
         {
             // C mode
+            fputs("#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202300L\n", out);
+            fputs("#define ZC_AUTO auto\n", out);
+            fputs("#else\n", out);
             fputs("#define ZC_AUTO __auto_type\n", out);
+            fputs("#endif\n", out);
             fputs("#define ZC_CAST(T, x) ((T)(x))\n", out);
             fputs(ZC_TCC_COMPAT_STR, out);
             fputs("static inline const char* _z_bool_str(_Bool b) { return b ? \"true\" : "

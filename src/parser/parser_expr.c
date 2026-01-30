@@ -148,6 +148,8 @@ int is_type_copy(ParserContext *ctx, Type *t)
     case TYPE_POINTER: // Pointers are Copy
     case TYPE_FUNCTION:
     case TYPE_ENUM: // Enums are integers
+    case TYPE_BITINT:
+    case TYPE_UBITINT:
         return 1;
 
     case TYPE_STRUCT:

@@ -59,6 +59,8 @@ typedef enum
     TYPE_FUNCTION, ///< Function pointer or reference.
     TYPE_GENERIC,  ///< Generic type parameter (T).
     TYPE_ALIAS,    ///< Opaque type alias.
+    TYPE_BITINT,   ///< C23 _BitInt(N).
+    TYPE_UBITINT,  ///< C23 unsigned _BitInt(N).
     TYPE_UNKNOWN   ///< Unknown/unresolved type.
 } TypeKind;
 
@@ -75,7 +77,7 @@ typedef struct Type
     int is_const;           ///< 1 if const-qualified.
     int is_explicit_struct; ///< 1 if defined with "struct" keyword explicitly.
     int is_raw;             // Raw function pointer (fn*)
-    int array_size;         ///< Size for fixed-size arrays.
+    int array_size;         ///< Size for fixed-size arrays. For TYPE_BITINT, this is the bit width.
     union
     {
         int is_varargs;  ///< 1 if function type is variadic.
